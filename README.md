@@ -70,14 +70,17 @@ Jaccard Index (IoU)
 Sensitivity & Specificity
 🚀 Goal: Achieve 90%+ Dice Score on validation data!
 
-👨‍💻 Team Members:
-[John Ross] - Model Development
+## Contributors
+- [John Ross]
+- [Daniel Gutierrez]
+- [Joe Reyna]
+- [Esteban Kott]
 
-[Daniel Gutierrez] - Data Engineering & Preprocessing
+---
 
-[Esteban Kott] - Training & Optimization
-
-[Joe Reyna] - Deployment & Web App
+## Contact
+For questions or suggestions, please contact daniel.gutierreziii01@utrgv.edu, john.ross01@utrgv.edu, Esteban.kott01@utrgv.edu, joe.reyna02@utrgv.edu
+Faculty Advisor Dr. Pengfei Gu. pengfei.gu01@utrgv.edu
 
 ⚖️ License
 📜 This project is licensed under the MIT License – free to use and modify.
