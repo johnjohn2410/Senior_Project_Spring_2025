@@ -1,6 +1,3 @@
-Skin Lesion Segmentation using MONAI
-md
-
 # 🩺 Skin Lesion Segmentation using MONAI
 
 ## 📌 Project Overview
