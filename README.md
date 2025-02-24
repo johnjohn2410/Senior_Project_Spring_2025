@@ -22,14 +22,15 @@ This project aims to develop a **deep learning-based segmentation model** to acc
 ```bash
 git clone https://github.com/YOUR_GITHUB_USERNAME/skin-lesion-segmentation.git
 cd skin-lesion-segmentation
-2️⃣ Create a Virtual Environment & Install Dependencies
-bash
-
+```
+## 2️⃣ Create a Virtual Environment & Install Dependencies
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows use `venv\Scripts\activate`
 pip install -r requirements.txt
+```
 
-3️⃣ Download the ISIC Dataset
+## 3️⃣ Download the ISIC Dataset
 Visit ISIC Archive.
 Download images and corresponding segmentation masks.
 Organize them in the /data/images/ and /data/masks/ directories.
@@ -45,20 +46,20 @@ Augmentations: Albumentations for medical image processing
 📊 Training the Model
 Run the training script:
 
-bash
+```bash
 python src/train.py
+```
 This will:
-
 Load the ISIC dataset.
 Apply data augmentation.
 Train the MONAI U-Net model.
 Save the best model weights in /models/.
 🎯 Making Predictions
 To run inference on a new image:
-bash
+```bash
 python src/predict.py --image path/to/image.jpg
+```
 This will output:
-
 The segmentation mask overlaid on the original image.
 Prediction confidence scores.
 🔥 Performance Metrics
@@ -69,26 +70,15 @@ Jaccard Index (IoU)
 Sensitivity & Specificity
 🚀 Goal: Achieve 90%+ Dice Score on validation data!
 
-👨‍💻 Team Members
-[Your Name] - Model Development
-[Teammate 2] - Data Engineering & Preprocessing
-[Teammate 3] - Training & Optimization
-[Teammate 4] - Deployment & Web App
-👥 Contributing
-👨‍💻 Want to contribute? Follow these steps!
+👨‍💻 Team Members:
+[John Ross] - Model Development
 
-Fork this repository.
-Create a new branch:
-bash
-git checkout -b feature-branch-name
-Make changes & commit:
-bash
-git add .
-git commit -m "Added new feature"
-Push to GitHub:
-bash
-git push origin feature-branch-name
-Submit a Pull Request (PR) for review.
+[Daniel Gutierrez] - Data Engineering & Preprocessing
+
+[Esteban Kott] - Training & Optimization
+
+[Joe Reyna] - Deployment & Web App
+
 ⚖️ License
 📜 This project is licensed under the MIT License – free to use and modify.
 
