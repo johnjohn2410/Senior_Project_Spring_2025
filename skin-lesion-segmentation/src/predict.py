@@ -6,6 +6,10 @@ The predicted segmentation masks are extracted and displayed alongside the origi
 to evaluate the model's performance on unseen data and validate how well it generalizes to new skin lesion images.
 """
 
+import platform
+import multiprocessing
+if platform.system() == "Darwin":  # macOS
+    multiprocessing.set_start_method("fork", force=True)
 import os
 import torch
 import numpy as np
@@ -18,6 +22,7 @@ from monai.transforms import (
 from monai.networks.nets import UNet
 from monai.inferers import sliding_window_inference
 from monai.data import Dataset, DataLoader
+
 
 # Define paths for test images and trained model
 TEST_IMAGE_DIRECTORY = "data/test_images/ISIC_2016_task1_training_images_tests/"
@@ -36,6 +41,10 @@ if not os.path.exists(MODEL_FILE_PATH):
 test_image_list = sorted(
     [os.path.join(TEST_IMAGE_DIRECTORY, img) for img in os.listdir(TEST_IMAGE_DIRECTORY) if img.endswith(".jpg")])
 
+# Define transformation function to replace lambda
+def convert_to_grayscale(image):
+    return image.mean(dim=0, keepdim=True)  # Convert RGB to Grayscale (3 → 1 channel)
+
 # Define MONAI transformations
 test_image_transforms = Compose([
     LoadImage(reader="PILReader", image_only=True),
@@ -43,7 +52,7 @@ test_image_transforms = Compose([
     Resize((256, 256)),
     ScaleIntensity(),
     ToTensor(),
-    lambda x: x.mean(dim=0, keepdim=True)  # Convert RGB to Grayscale (3 → 1 channel)
+    convert_to_grayscale  # Use named function instead of lambda
 ])
 
 # Create dataset
@@ -110,4 +119,32 @@ plt.tight_layout()
 plt.show()
 
 if __name__ == "__main__":
+    print("Starting segmentation...")
+
+    # Create dataset and DataLoader inside __main__
+    test_data_samples = LesionDataset(test_image_list, test_image_transforms)
+    test_data_loader = DataLoader(test_data_samples, batch_size=1, shuffle=False, num_workers=2)
+
+    # Run predictions
+    test_image_masks = generate_segmentation_masks(segmentation_model, test_data_loader)
+
+    # Visualize a few results
+    sample_count = min(5, len(test_image_list))
+    figure, axis_matrix = plt.subplots(sample_count, 2, figsize=(10, 15))
+    for index in range(sample_count):
+        input_image = Image.open(test_image_list[index]).convert("L")  # Load and convert to grayscale
+        predicted_mask = test_image_masks[index][0][0]  # First batch, first channel
+
+        axis_matrix[index, 0].imshow(input_image, cmap='gray')
+        axis_matrix[index, 0].set_title("Original Image")
+        axis_matrix[index, 0].axis("off")
+
+        axis_matrix[index, 1].imshow(predicted_mask, cmap='jet')
+        axis_matrix[index, 1].set_title("Predicted Mask")
+        axis_matrix[index, 1].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
     print("Segmentation complete! Displaying predicted masks.")
+
