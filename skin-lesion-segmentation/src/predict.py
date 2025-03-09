@@ -97,26 +97,6 @@ def generate_segmentation_masks(model, dataloader):
             mask_predictions.append(predicted_mask)
     return mask_predictions
 
-# Run predictions
-test_image_masks = generate_segmentation_masks(segmentation_model, test_data_loader)
-
-# Visualize a few results
-sample_count = min(5, len(test_image_list))
-figure, axis_matrix = plt.subplots(sample_count, 2, figsize=(10, 15))
-for index in range(sample_count):
-    input_image = Image.open(test_image_list[index]).convert("L")  # Load and convert to grayscale
-    predicted_mask = test_image_masks[index][0][0]  # First batch, first channel
-
-    axis_matrix[index, 0].imshow(input_image, cmap='gray')
-    axis_matrix[index, 0].set_title("Original Image")
-    axis_matrix[index, 0].axis("off")
-
-    axis_matrix[index, 1].imshow(predicted_mask, cmap='jet')
-    axis_matrix[index, 1].set_title("Predicted Mask")
-    axis_matrix[index, 1].axis("off")
-
-plt.tight_layout()
-plt.show()
 
 if __name__ == "__main__":
     print("Starting segmentation...")
