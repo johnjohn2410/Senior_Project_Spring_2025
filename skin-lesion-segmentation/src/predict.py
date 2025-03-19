@@ -22,6 +22,7 @@ from monai.transforms import (
 from monai.networks.nets import UNet
 from monai.inferers import sliding_window_inference
 from monai.data import Dataset, DataLoader
+from image_tools import remove_noise_and_extract_largest  # Remove sharpen_image import
 
 
 # Define paths for test images and trained model
@@ -40,6 +41,14 @@ if not os.path.exists(MODEL_FILE_PATH):
 # Load test images
 test_image_list = sorted(
     [os.path.join(TEST_IMAGE_DIRECTORY, img) for img in os.listdir(TEST_IMAGE_DIRECTORY) if img.endswith(".jpg")])
+
+# Load true masks
+test_mask_list = sorted(
+    [os.path.join(TEST_MASK_DIRECTORY, mask) for mask in os.listdir(TEST_MASK_DIRECTORY) if mask.endswith(".png")]
+)
+
+if len(test_image_list) != len(test_mask_list):
+    raise ValueError(f"❌ ERROR: Mismatch between test images ({len(test_image_list)}) and masks ({len(test_mask_list)})!")
 
 # Define transformation function to replace lambda
 def convert_to_grayscale(image):
@@ -108,23 +117,46 @@ if __name__ == "__main__":
     # Run predictions
     test_image_masks = generate_segmentation_masks(segmentation_model, test_data_loader)
 
+    # Define threshold
+    threshold = 0.6
+
+    # Clean masks
+    cleaned_masks = [
+        remove_noise_and_extract_largest(predicted_mask[0][0], threshold=threshold)
+        for predicted_mask in test_image_masks
+    ]
+
     # Visualize a few results
     sample_count = min(5, len(test_image_list))
-    figure, axis_matrix = plt.subplots(sample_count, 2, figsize=(10, 15))
+    figure, axis_matrix = plt.subplots(sample_count, 4, figsize=(20, 15))  # Adjusted for 4 columns
     for index in range(sample_count):
         input_image = Image.open(test_image_list[index]).convert("L")  # Load and convert to grayscale
+        true_mask = Image.open(test_mask_list[index]).convert("L")  # Load true mask
         predicted_mask = test_image_masks[index][0][0]  # First batch, first channel
+        cleaned_mask = cleaned_masks[index]  # Use precomputed cleaned mask
 
+        # Display original image
         axis_matrix[index, 0].imshow(input_image, cmap='gray')
         axis_matrix[index, 0].set_title("Original Image")
         axis_matrix[index, 0].axis("off")
 
-        axis_matrix[index, 1].imshow(predicted_mask, cmap='jet')
-        axis_matrix[index, 1].set_title("Predicted Mask")
+        # Display true mask
+        axis_matrix[index, 1].imshow(true_mask, cmap='gray')
+        axis_matrix[index, 1].set_title("True Mask")
         axis_matrix[index, 1].axis("off")
+
+        # Display predicted mask
+        axis_matrix[index, 2].imshow(predicted_mask, cmap='gray')
+        axis_matrix[index, 2].set_title("Predicted Mask")
+        axis_matrix[index, 2].axis("off")
+
+        # Display cleaned mask
+        axis_matrix[index, 3].imshow(cleaned_mask, cmap='gray')
+        axis_matrix[index, 3].set_title(f"Cleaned Mask (T={threshold})")
+        axis_matrix[index, 3].axis("off")
 
     plt.tight_layout()
     plt.show()
 
-    print("Segmentation complete! Displaying predicted masks.")
+    print("Segmentation complete! Displaying true masks, predicted masks, and cleaned masks.")
 
