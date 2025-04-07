@@ -62,7 +62,6 @@ if __name__ == "__main__":
         ScaleIntensity(),
         Resize((256, 256)),
         ToTensor(),
-        lambda x: x.mean(dim=0, keepdim=True)  # 🔥 Convert RGB to Grayscale (3 → 1 channel)
     ])
 
     # Mask Transformations
@@ -104,7 +103,7 @@ if __name__ == "__main__":
     computation_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     skin_lesion_model = UNet(
         spatial_dims=2,
-        in_channels=1,  # Grayscale images
+        in_channels=3,  # Grayscale images
         out_channels=1,  # Binary masks
         channels=(16, 32, 64, 128, 256),
         strides=(2, 2, 2, 2),
@@ -125,8 +124,9 @@ if __name__ == "__main__":
     # Visualize Sample Batch
     fig, axes = plt.subplots(2, 5, figsize=(12, 5))
     for i in range(5):
-        axes[0, i].imshow(images[i].squeeze(0).cpu().numpy(), cmap="gray")
-        axes[0, i].axis("off")
+        # Move channels from [C, H, W] → [H, W, C] for matplotlib
+        img = images[i].permute(1, 2, 0).cpu().numpy()
+        axes[0, i].imshow(img)  # No need for cmap="gray" now
         axes[1, i].imshow(masks[i].squeeze(0).cpu().numpy(), cmap="gray")
         axes[1, i].axis("off")
     axes[0, 0].set_title("Images")
