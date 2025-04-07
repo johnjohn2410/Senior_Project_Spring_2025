@@ -24,9 +24,9 @@ from image_tools import remove_noise_and_extract_largest  # Remove sharpen_image
 
 
 # Define paths for test images and trained model
-TEST_IMAGE_DIRECTORY = "skin-lesion-segmentation/data/test_images/ISIC_2016_task1_training_images_tests/"
-TEST_MASK_DIRECTORY = "skin-lesion-segmentation/data/test_masks/ISIC_2016_task1_training_masks_tests/"
-MODEL_FILE_PATH = "skin-lesion-segmentation/models/skin_lesion_segmentation.pth"
+TEST_IMAGE_DIRECTORY = "data/test_images/ISIC_2016_task1_training_images_tests/"
+TEST_MASK_DIRECTORY = "data/test_masks/ISIC_2016_task1_training_masks_tests/"
+MODEL_FILE_PATH = "models/skin_lesion_segmentation.pth"
 
 # Check if image file exists
 if not os.path.exists(TEST_IMAGE_DIRECTORY):
@@ -82,7 +82,7 @@ test_data_loader = DataLoader(test_data_samples, batch_size=1, shuffle=False, nu
 device_type = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 segmentation_model = UNet(
     spatial_dims=2,
-    in_channels=1,
+    in_channels=3,
     out_channels=1,
     channels=(16, 32, 64, 128, 256),
     strides=(2, 2, 2, 2),
