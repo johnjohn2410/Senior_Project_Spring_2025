@@ -1,4 +1,4 @@
-# 🩺 Skin Lesion Segmentation using MONAI
+# 🩺 Skin Lesion Segmentation
 
 ## 📌 Project Overview
 This project aims to develop a **deep learning-based segmentation model** to accurately identify and delineate **skin lesions** from **dermoscopic images** using the **ISIC Archive dataset**. The model is built using **MONAI (Medical Open Network for AI)** and **PyTorch**, optimized for medical imaging.
