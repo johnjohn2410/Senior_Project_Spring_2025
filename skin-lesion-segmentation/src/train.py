@@ -6,152 +6,124 @@ wrapped into a PyTorch DataLoader for batch processing. The U-Net model is then 
 integrity. The training loop runs for 20 epochs, where the model processes images, computes loss, and updates weights using
 backpropagation. The script outputs loss values per epoch and saves the trained model to disk for later use.
 """
-
 import os
 import torch
-import monai
-import numpy as np
 import matplotlib.pyplot as plt
+import wandb
+import numpy as np
+from torch.optim import Adam
 from monai.networks.nets import UNet
 from monai.losses import DiceLoss
 from monai.metrics import DiceMetric
-from monai.data import Dataset, DataLoader
-from monai.transforms import (
-    LoadImage, EnsureChannelFirst, ScaleIntensity, RandRotate, RandFlip, RandZoom,
-    Compose, Resize, ToTensor, AsDiscrete
-)
-from torch.optim import Adam
+from dataset import get_dataloaders
 
-# Allows multiprocessing on Windows and macOS
-if __name__ == "__main__":
+DEBUG_VISUALIZE = False
 
-    # Define dataset paths
-    LESION_IMAGE_DIR = "data/images/ISIC_2016_task1_training_data_images/"
-    LESION_MASK_DIR = "data/masks/ISIC_2016_task1_training_masks/"
-    TRAINED_MODEL_PATH = "models/skin_lesion_segmentation.pth"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # 📂 **Load training images and masks**
-    lesion_image_list = sorted(
-        [os.path.join(LESION_IMAGE_DIR, img) for img in os.listdir(LESION_IMAGE_DIR) if img.endswith(".jpg")]
-    )
-    lesion_mask_list = sorted(
-        [os.path.join(LESION_MASK_DIR, mask) for mask in os.listdir(LESION_MASK_DIR) if mask.endswith("_Segmentation.png")]
-    )
+MODEL_SAVE_PATH = "models/skin_lesion_segmentation.pth"
+BEST_MODEL_PATH = "models/best_model.pth"
 
-    # Check if dataset exists
-    if not lesion_image_list or not lesion_mask_list:
-        raise FileNotFoundError(f"❌ ERROR: No images or masks found in {LESION_IMAGE_DIR} or {LESION_MASK_DIR}")
+wandb.init(project="skin-lesion-segmentation", name="train-rgb-cradle-run")
+wandb.config = {
+    "epochs": 300,
+    "batch_size": 8,
+    "image_size": "256x256",
+    "input_channels": 3,
+    "model": "UNet",
+    "optimizer": "Adam",
+    "loss_function": "DiceLoss"
+}
 
-    # Check if image/mask counts match**
-    if len(lesion_image_list) != len(lesion_mask_list):
-        raise ValueError(f"❌ ERROR: Mismatch between images ({len(lesion_image_list)}) and masks ({len(lesion_mask_list)})!")
+train_loader, val_loader = get_dataloaders(batch_size=wandb.config["batch_size"])
 
-    # Debugs by printing the first 5 image/mask paths
-    print("\n🔍 Checking first 5 training image paths:")
-    for img_path in lesion_image_list[:5]:
-        print(f"🖼 Image: {img_path} - Exists: {os.path.exists(img_path)}")
+model = UNet(
+    spatial_dims=2,
+    in_channels=3,
+    out_channels=1,
+    channels=(16, 32, 64, 128, 256),
+    strides=(2, 2, 2, 2),
+    num_res_units=2
+).to(device)
 
-    print("\n🔍 Checking first 5 training mask paths:")
-    for mask_path in lesion_mask_list[:5]:
-        print(f"🎭 Mask: {mask_path} - Exists: {os.path.exists(mask_path)}")
+criterion = DiceLoss(sigmoid=True)
+optimizer = Adam(model.parameters(), lr=1e-4)
+dice_metric = DiceMetric(include_background=False, reduction="mean")
 
-    # Define Image Transformations (Convert RGB → Grayscale)
-    image_transforms = Compose([
-        LoadImage(reader="PILReader", image_only=True),
-        EnsureChannelFirst(),
-        ScaleIntensity(),
-        Resize((256, 256)),
-        ToTensor(),
-    ])
+best_dice = 0.0
 
-    # Mask Transformations
-    mask_transforms = Compose([
-        LoadImage(reader="PILReader", image_only=True),
-        EnsureChannelFirst(),
-        ScaleIntensity(),
-        Resize((256, 256)),
-        AsDiscrete(threshold=0.5),  # Ensure mask is binary
-        ToTensor()
-    ])
+for epoch in range(wandb.config["epochs"]):
+    model.train()
+    epoch_loss = 0
 
-    # Create dataset
-    class LesionDataset(Dataset):
-        def __init__(self, images, masks, image_transforms, mask_transforms):
-            self.images = images
-            self.masks = masks
-            self.image_transforms = image_transforms
-            self.mask_transforms = mask_transforms
+    for batch in train_loader:
+        images = batch["image"].to(device)
+        masks = batch["mask"].to(device)
 
-        def __len__(self):
-            return len(self.images)
+        optimizer.zero_grad()
+        outputs = model(images)
+        loss = criterion(outputs, masks)
+        loss.backward()
+        optimizer.step()
 
-        def __getitem__(self, idx):
-            image = self.image_transforms(self.images[idx])
-            mask = self.mask_transforms(self.masks[idx])
-            return {"image": image, "label": mask}  # ✅ Using "label" as key
+        epoch_loss += loss.item()
 
-    lesion_dataset = LesionDataset(
-        lesion_image_list, lesion_mask_list, image_transforms, mask_transforms
-    )
+    avg_train_loss = epoch_loss / len(train_loader)
 
-    # Cross-Platform DataLoader (MacOS vs. Windows/Linux)
-    num_workers = 0 if os.name == "posix" else 2  # `posix` = macOS/Linux, Windows needs 2+
+    model.eval()
+    dice_metric.reset()
 
-    lesion_data_loader = DataLoader(lesion_dataset, batch_size=8, shuffle=True, num_workers=num_workers)
+    with torch.no_grad():
+        for val_batch in val_loader:
+            val_images = val_batch["image"].to(device)
+            val_masks = val_batch["mask"].to(device)
 
-    # Define UNet model
-    computation_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    skin_lesion_model = UNet(
-        spatial_dims=2,
-        in_channels=3,  # Grayscale images
-        out_channels=1,  # Binary masks
-        channels=(16, 32, 64, 128, 256),
-        strides=(2, 2, 2, 2),
-        num_res_units=2,
-    ).to(computation_device)
+            val_preds = model(val_images)
+            val_preds = torch.sigmoid(val_preds)
+            val_preds = (val_preds > 0.3).float()
 
-    # Define loss function & optimizer
-    lesion_loss_function = DiceLoss(sigmoid=True)
-    lesion_optimizer = Adam(skin_lesion_model.parameters(), lr=1e-4)
-    dice_score_metric = DiceMetric(include_background=False, reduction="mean")
+            dice_metric(y_pred=val_preds, y=val_masks)
 
-    # Checks a Batch Before Training
-    data_batch = next(iter(lesion_data_loader))
-    images, masks = data_batch["image"], data_batch["label"]
-    print(f"\n🖼 Image Batch Shape: {images.shape}")
-    print(f"🎭 Mask Batch Shape: {masks.shape}")
+    avg_val_dice = dice_metric.aggregate().item()
 
-    # Visualize Sample Batch
-    fig, axes = plt.subplots(2, 5, figsize=(12, 5))
-    for i in range(5):
-        # Move channels from [C, H, W] → [H, W, C] for matplotlib
-        img = images[i].permute(1, 2, 0).cpu().numpy()
-        axes[0, i].imshow(img)  # No need for cmap="gray" now
-        axes[1, i].imshow(masks[i].squeeze(0).cpu().numpy(), cmap="gray")
-        axes[1, i].axis("off")
-    axes[0, 0].set_title("Images")
-    axes[1, 0].set_title("Masks")
-    plt.show()
+    print(f"📈 Epoch {epoch + 1}/{wandb.config['epochs']} - Loss: {avg_train_loss:.4f}, Val Dice: {avg_val_dice:.4f}")
 
-    # Training loop
-    num_training_epochs = 20
-    for epoch_index in range(num_training_epochs):
-        skin_lesion_model.train()
-        cumulative_epoch_loss = 0
+    wandb.log({
+        "epoch": epoch + 1,
+        "train_loss": avg_train_loss,
+        "val_dice_score": avg_val_dice
+    })
 
-        for data_batch in lesion_data_loader:
-            lesion_optimizer.zero_grad()
-            input_images = data_batch["image"].to(computation_device)
-            ground_truth_masks = data_batch["label"].to(computation_device)  # ✅ Use "label"
+    if avg_val_dice > best_dice:
+        best_dice = avg_val_dice
+        torch.save(model.state_dict(), BEST_MODEL_PATH)
+        print(f"💾 New best model saved with Dice: {best_dice:.4f}")
 
-            lesion_predictions = skin_lesion_model(input_images)
-            training_loss = lesion_loss_function(lesion_predictions, ground_truth_masks)
-            training_loss.backward()
-            lesion_optimizer.step()
-            cumulative_epoch_loss += training_loss.item()
+    if (epoch + 1) % 10 == 0 or epoch == 0:
+        input_img = val_images[0].permute(1, 2, 0).cpu().numpy()
+        true_mask = val_masks[0][0].cpu().numpy()
+        pred_mask = val_preds[0][0].cpu().numpy()
 
-        print(f"📈 Epoch {epoch_index + 1}/{num_training_epochs}, Loss: {cumulative_epoch_loss:.4f}")
+        wandb.log({
+            "Input Image": wandb.Image(input_img, caption="Input"),
+            "True Mask": wandb.Image(true_mask, caption="Ground Truth"),
+            "Predicted Mask": wandb.Image(pred_mask, caption="Prediction")
+        })
 
-    # Save trained model
-    torch.save(skin_lesion_model.state_dict(), TRAINED_MODEL_PATH)
-    print("✅ Training complete. Model saved at:", TRAINED_MODEL_PATH)
+        if DEBUG_VISUALIZE:
+            fig, axs = plt.subplots(1, 3, figsize=(12, 4))
+            axs[0].imshow(input_img)
+            axs[0].set_title("Input Image")
+            axs[1].imshow(true_mask, cmap="gray")
+            axs[1].set_title("Ground Truth Mask")
+            axs[2].imshow(pred_mask, cmap="gray")
+            axs[2].set_title("Predicted Mask")
+            for ax in axs:
+                ax.axis("off")
+            plt.tight_layout()
+            plt.show()
+
+torch.save(model.state_dict(), MODEL_SAVE_PATH)
+print("✅ Training complete. Final model saved at:", MODEL_SAVE_PATH)
+
+wandb.finish()

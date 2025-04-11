@@ -93,3 +93,12 @@ if __name__ == "__main__":
         print(f"🎭 Mask Tensor Shape: {first_batch['mask'].shape}")  # Expect [1, 256, 256]
     except Exception as e:
         print(f"\n❌ Error loading dataset: {e}")
+
+def get_dataloaders(batch_size=8, num_workers=0):
+    training_dataset = CacheDataset(data=training_data_records, transform=lesion_transforms, cache_rate=1.0)
+    validation_dataset = CacheDataset(data=validation_data_records, transform=lesion_transforms, cache_rate=1.0)
+
+    train_loader = DataLoader(training_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(validation_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+    return train_loader, val_loader

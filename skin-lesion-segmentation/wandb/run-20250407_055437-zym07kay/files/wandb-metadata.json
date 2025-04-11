@@ -1,0 +1,44 @@
+{
+  "os":  "macOS-15.3.2-arm64-arm-64bit-Mach-O",
+  "python":  "CPython 3.13.2",
+  "startedAt":  "2025-04-07T10:54:37.560119Z",
+  "program":  "/Users/johnross/Senior_Project_Spring_2025/skin-lesion-segmentation/src/train.py",
+  "codePath":  "skin-lesion-segmentation/src/train.py",
+  "git":  {
+    "remote":  "https://github.com/johnjohn2410/Senior_Project_Spring_2025",
+    "commit":  "1ef36599dbe4772a4db49980833b13a4c1ea3fb2"
+  },
+  "email":  "john.ross01@utrgv.edu",
+  "root":  "/Users/johnross/Senior_Project_Spring_2025/skin-lesion-segmentation",
+  "host":  "Johns-MacBook-Pro.local",
+  "executable":  "/Users/johnross/Senior_Project_Spring_2025/venv/bin/python",
+  "codePathLocal":  "src/train.py",
+  "cpu_count":  8,
+  "cpu_count_logical":  8,
+  "disk":  {
+    "/":  {
+      "total":  "245107195904",
+      "used":  "222173433856"
+    },
+    "/System/Volumes/Data":  {
+      "total":  "245107195904",
+      "used":  "222173433856"
+    }
+  },
+  "memory":  {
+    "total":  "8589934592"
+  },
+  "cpu":  {
+    "count":  8,
+    "countLogical":  8
+  },
+  "apple":  {
+    "name":  "Apple M1",
+    "ecpuCores":  4,
+    "pcpuCores":  4,
+    "gpuCores":  8,
+    "memoryGb":  8,
+    "swapTotalBytes":  "9663676416",
+    "ramTotalBytes":  "8589934592"
+  }
+}
