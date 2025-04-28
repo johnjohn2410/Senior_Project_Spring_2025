@@ -27,7 +27,7 @@ BEST_MODEL_PATH = "models/best_model.pth"
 wandb.init(project="skin-lesion-segmentation", name="train-rgb-cradle-run")
 wandb.config = {
     "epochs": 300,
-    "batch_size": 8,
+    "batch_size": 80,
     "image_size": "256x256",
     "input_channels": 3,
     "model": "UNet",

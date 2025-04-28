@@ -1,4 +1,4 @@
-# train_vm_unet.py (Transformer-based U-Net v2)
+# train_vm_unet.py (Transformer-based UNetV2)
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -9,7 +9,7 @@ from unet_v2.unet_v2 import UNetV2
 
 wandb.init(project="skin-lesion", name="unetv2-transformer-300ep", config={
     "epochs": 300,
-    "batch_size": 2,
+    "batch_size": 80,
     "lr": 1e-4,
     "model": "UNetV2"
 })
@@ -19,6 +19,15 @@ train_loader, val_loader = get_dataloaders(batch_size=wandb.config["batch_size"]
 model = UNetV2(n_classes=2, deep_supervision=True)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
+
+# Load pretrained weights for Transformer model
+pretrained_path = "./pretrained/polyp_pvt/PolypPVT.pth"
+if os.path.exists(pretrained_path):
+    print(f"Loading pretrained weights from {pretrained_path}")
+    checkpoint = torch.load(pretrained_path, map_location=device)
+    model.load_state_dict(checkpoint["model"], strict=False)
+else:
+    print(f"Pretrained weights not found at {pretrained_path}. Continuing without pretrained weights.")
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.Adam(model.parameters(), lr=wandb.config["lr"])

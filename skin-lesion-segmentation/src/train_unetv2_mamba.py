@@ -9,7 +9,7 @@ from vm_unet_v2.VM_UNetV2 import VMUNetV2
 
 wandb.init(project="skin-lesion", name="unetv2-mamba-300ep", config={
     "epochs": 300,
-    "batch_size": 2,
+    "batch_size": 80,
     "lr": 1e-4,
     "model": "VMUNetV2"
 })
@@ -19,6 +19,15 @@ train_loader, val_loader = get_dataloaders(batch_size=wandb.config["batch_size"]
 model = VMUNetV2(num_classes=2)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = model.to(device)
+
+# Load pretrained weights for Mamba model
+pretrained_path = "./pretrained/vmamba/vmamba_small_e238_ema.pth"
+if os.path.exists(pretrained_path):
+    print(f"Loading pretrained weights from {pretrained_path}")
+    checkpoint = torch.load(pretrained_path, map_location=device)
+    model.load_state_dict(checkpoint["model"], strict=False)
+else:
+    print(f"Pretrained weights not found at {pretrained_path}. Continuing without pretrained weights.")
 
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.AdamW(model.parameters(), lr=wandb.config["lr"])
